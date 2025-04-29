@@ -28,7 +28,6 @@ class AuthController extends Controller
     public function login(LoginRequest $request)
     {
         $result = $this->authService->login($request->validated());
-
         if (!$result) {
             return response()->json([
                 'message' => 'Credenciales inválidas'
@@ -37,8 +36,10 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'bienvenido',
-            $result
+            'token' => $result['token'],
+            'user' => $result['user'] ?? null
         ]);
+        
     }
 
     public function logout()

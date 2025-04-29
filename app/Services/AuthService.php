@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Repositories\UserRepository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Tymon\JWTAuth\JWTGuard; 
+use Tymon\JWTAuth\JWTGuard;
 
 class AuthService
 {
@@ -22,6 +22,11 @@ class AuthService
 
     public function register(array $data)
     {
+        $existingUser = $this->userRepository->findByName($data['name']);
+
+        if ($existingUser) {
+            throw new \Exception('El nombre de usuario ya está registrado');
+        }
         $user = $this->userRepository->create($data);
 
         return $this->generateTokenResponse($user);
@@ -29,14 +34,17 @@ class AuthService
 
     public function login(array $credentials)
     {
+        $rememberMe = $credentials['remember_me'] ?? false;
+    
         $user = $this->userRepository->findByName($credentials['name']);
-
+    
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return null;
         }
-
-        return $this->generateTokenResponse($user);
+    
+        return $this->generateTokenResponse($user, $rememberMe);
     }
+    
 
     public function logout()
     {
@@ -59,12 +67,17 @@ class AuthService
     }
 
 
-    private function generateTokenResponse($user)
+    private function generateTokenResponse($user, $rememberMe = false)
     {
+        if ($rememberMe) {
+            $this->guard->factory()->setTTL(43200); // 30 días (30*24*60)
+        }
+
         $token = $this->guard->login($user);
 
         return $this->buildTokenData($user, $token);
     }
+
 
     private function buildTokenData($user, $token)
     {
